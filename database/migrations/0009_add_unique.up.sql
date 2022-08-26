@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX idx_dishes ON dishes(restaurant_id, name) WHERE archived_at IS NULL ;

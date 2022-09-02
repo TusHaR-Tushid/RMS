@@ -27,4 +27,5 @@ func main() {
 		log.Printf("could not run the server:%v", err)
 		return
 	}
+	// log.Printf("check 101 for main")
 }

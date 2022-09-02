@@ -1,17 +1,16 @@
 package handler
 
 import (
-	"RMS/database"
-	"RMS/database/helper"
-	"RMS/models"
-	"RMS/utilities"
-	"context"
 	"database/sql"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"RMS/database"
+	"RMS/database/helper"
+	"RMS/models"
+	"RMS/utilities"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5"
@@ -20,193 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtKey = []byte("secret_key")
-
-func AdminMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("token")
-
-		claims := models.Claims{}
-
-		tkn, err1 := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-		if err1 != nil {
-			if err1 == jwt.ErrSignatureInvalid {
-				logrus.Printf("Signature invalid:%v", err1)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			logrus.Printf("ParseErr:%v", err1)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if claims.Issuer != "admin" {
-			w.WriteHeader(http.StatusUnauthorized)
-			logrus.Printf("Role invalid")
-			_, err := w.Write([]byte("ERROR: Role mismatch"))
-			if err != nil {
-				return
-			}
-			return
-		}
-
-		// FetchRole, err := helper.FetchRole(userID)
-		// if err !=nil{
-		//	w.WriteHeader(http.StatusBadRequest)
-		//	log.Printf("Middleware: fetch role error:%v",err)
-		//	return
-		// }
-
-		if !tkn.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			log.Printf("token is invalid")
-			return
-		}
-		adminID := claims.Id
-
-		r = r.WithContext(context.WithValue(r.Context(), utilities.UserContextKey, adminID))
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func SubAdminMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("token")
-
-		claims := models.Claims{}
-
-		tkn, err1 := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-		if err1 != nil {
-			if err1 == jwt.ErrSignatureInvalid {
-				logrus.Printf("Signature invalid:%v", err1)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			logrus.Printf("ParseErr:%v", err1)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if claims.Issuer != "sub_admin" {
-			w.WriteHeader(http.StatusUnauthorized)
-			logrus.Printf("Role invalid")
-			_, err := w.Write([]byte("ERROR: Role mismatch"))
-			if err != nil {
-				return
-			}
-			return
-		}
-
-		// FetchRole, err := helper.FetchRole(userID)
-		// if err !=nil{
-		//	w.WriteHeader(http.StatusBadRequest)
-		//	log.Printf("Middleware: fetch role error:%v",err)
-		//	return
-		// }
-
-		if !tkn.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			logrus.Printf("token is invalid")
-			return
-		}
-		subAdminID := claims.Id
-
-		r = r.WithContext(context.WithValue(r.Context(), utilities.UserContextKey, subAdminID))
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func UserMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("token")
-
-		claims := models.Claims{}
-
-		tkn, err1 := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-		if err1 != nil {
-			if err1 == jwt.ErrSignatureInvalid {
-				logrus.Printf("Signature invalid:%v", err1)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			logrus.Printf("ParseErr:%v", err1)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if claims.Issuer != "user" {
-			w.WriteHeader(http.StatusUnauthorized)
-			logrus.Printf("Role invalid")
-			_, err := w.Write([]byte("ERROR: Role mismatch"))
-			if err != nil {
-				return
-			}
-			return
-		}
-		// FetchRole, err := helper.FetchRole(userID)
-		// if err !=nil{
-		//	w.WriteHeader(http.StatusBadRequest)
-		//	log.Printf("Middleware: fetch role error:%v",err)
-		//	return
-		// }
-		if !tkn.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			logrus.Printf("token is invalid")
-			return
-		}
-		userID := claims.Id
-		r = r.WithContext(context.WithValue(r.Context(), utilities.UserContextKey, userID))
-		next.ServeHTTP(w, r)
-	})
-}
-
-// func RestaurantMiddleWare(next http.Handler) http.Handler {
-//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		token := r.Header.Get("token")
-//		claims := models.Claims{}
-//		tkn, err1 := jwt.ParseWithClaims(token, &claims, func(t *jwt.Token) (interface{}, error) {
-//			return jwtKey, nil
-//		})
-//		if err1 != nil {
-//			if err1 == jwt.ErrSignatureInvalid {
-//				log.Printf("Signature invalid:%v", err1)
-//				w.WriteHeader(http.StatusUnauthorized)
-//				return
-//			}
-//			log.Printf("ParseErr:%v", err1)
-//			w.WriteHeader(http.StatusBadRequest)
-//			return
-//		}
-//		if claims.Issuer != "sub_admin" || claims.Issuer != "admin" {
-//			w.WriteHeader(http.StatusUnauthorized)
-//			log.Printf("Role invalid")
-//			return
-//		}
-//
-//		// FetchRole, err := helper.FetchRole(userID)
-//		// if err !=nil{
-//		//	w.WriteHeader(http.StatusBadRequest)
-//		//	log.Printf("Middleware: fetch role error:%v",err)
-//		//	return
-//		// }
-//
-//		if !tkn.Valid {
-//			w.WriteHeader(http.StatusUnauthorized)
-//			log.Printf("token is invalid")
-//			return
-//		}
-//		roleID := claims.Id
-//
-//		r = r.WithContext(context.WithValue(r.Context(), utilities.UserContextKey, roleID))
-//
-//		next.ServeHTTP(w, r)
-//	})
-// }
+var JwtKey = []byte("secret_key")
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	var userDetails models.UsersLoginDetails
@@ -217,6 +30,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	//	return
 	// }
 	decoderErr := utilities.Decoder(r, &userDetails)
+
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("Decoder error:%v", decoderErr)
@@ -226,6 +40,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	userDetails.Email = strings.ToLower(userDetails.Email)
 
 	userCredentials, fetchErr := helper.FetchPasswordAndIDANDRole(userDetails.Email, userDetails.Role)
+
 	if fetchErr != nil {
 		if fetchErr == sql.ErrNoRows {
 			w.WriteHeader(http.StatusBadRequest)
@@ -234,22 +49,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			logrus.Printf("FetchPasswordAndId: error is:%v", fetchErr)
+			logrus.Printf("FetchPasswordAndId: not able to get password, id, or role:%v", fetchErr)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	// if userCredentials.Roles != userDetails.Roles {
-	//	w.WriteHeader(http.StatusUnauthorized)
-	//	_, err := w.Write([]byte("ERROR: role mismatch"))
-	//	if err != nil {
-	//		return
-	//	}
-	//	log.Printf("user role mismatch error ")
-	//	return
-	// }
 
 	if PasswordErr := bcrypt.CompareHashAndPassword([]byte(userCredentials.Password), []byte(userDetails.Password)); PasswordErr != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -264,15 +69,16 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	expiresAt := time.Now().Add(60 * time.Minute)
 
 	claims := &models.Claims{
-		ID: userCredentials.ID,
+		ID:   userCredentials.ID,
+		Role: userCredentials.Role,
 		StandardClaims: jwt.StandardClaims{
 
 			ExpiresAt: expiresAt.Unix(),
-			Issuer:    userCredentials.Role,
+			// Issuer:    userCredentials.Role,
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
+	tokenString, err := token.SignedString(JwtKey)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logrus.Printf("TokenString: cannot create token string:%v", err)
@@ -285,34 +91,22 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	err = utilities.Encoder(w, userOutboundData)
 	if err != nil {
-		logrus.Printf("Login:%v", err)
+		logrus.Printf("Login: Not able to login:%v", err)
 		return
 	}
-
-	// err = json.NewEncoder(w).Encode(userOutboundData)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	logrus.Printf("encoder error:%v", err)
-	//	return
-	// }
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var userDetails models.Users
 
 	decoderErr := utilities.Decoder(r, &userDetails)
+
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("Decoder error:%v", decoderErr)
 		return
 	}
 
-	// err := json.NewDecoder(r.Body).Decode(&userDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		userID, err := helper.CreateUser(&userDetails, tx)
 		if err != nil {
@@ -325,7 +119,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			logrus.Printf("Register:CreateAddress:%v", err)
 			return err
 		}
-		err = helper.CreateRoleUser(userID, tx)
+		err = helper.CreateRole(userID, models.UserRoleUser, tx)
 		return err
 	})
 	if txErr != nil {
@@ -338,12 +132,6 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	userOutboundData["Successfully Registered: ID is"] = userDetails.ID
 
-	// err := json.NewEncoder(w).Encode(userOutboundData)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	logrus.Printf("encoder error:%v", err)
-	//	return
-	// }
 	err := utilities.Encoder(w, userOutboundData)
 	if err != nil {
 		logrus.Printf("Register:%v", err)
@@ -386,31 +174,31 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func CreateSubAdmin(w http.ResponseWriter, r *http.Request) {
 	var userDetails models.Users
 
-	// err := json.NewDecoder(r.Body).Decode(&userDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
 	decoderErr := utilities.Decoder(r, &userDetails)
+
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("Decoder error:%v", decoderErr)
 		return
 	}
+
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		userID, err := helper.CreateUser(&userDetails, tx)
+
 		if err != nil {
 			logrus.Printf("CreateSubAdmin:CreateUser:%v", err)
 			return err
 		}
+
 		userDetails.ID = userID
 		err = helper.CreateAddress(userID, &userDetails, tx)
+
 		if err != nil {
 			logrus.Printf("CreateSubAdmin:CreateAddress:%v", err)
 			return err
 		}
-		err = helper.CreateRoleSubAdmin(userID, tx)
+
+		err = helper.CreateRole(userID, models.UserRoleSubAdmin, tx)
 		return err
 	})
 	if txErr != nil {
@@ -418,6 +206,7 @@ func CreateSubAdmin(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("CreateSubAdmin:%v", txErr)
 		return
 	}
+
 	userOutboundData := make(map[string]int)
 
 	userOutboundData["Successfully Created SubAdmin: ID is"] = userDetails.ID
@@ -427,42 +216,36 @@ func CreateSubAdmin(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("CreateSubAdmin:%v", err)
 		return
 	}
-	// err := json.NewEncoder(w).Encode(userOutboundData)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	logrus.Printf("encoder error:%v", err)
-	//	return
-	// }
 }
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var userDetails models.Users
 
-	// err := json.NewDecoder(r.Body).Decode(&userDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
 	decoderErr := utilities.Decoder(r, &userDetails)
+
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("Decoder error:%v", decoderErr)
 		return
 	}
+
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		userID, err := helper.CreateUser(&userDetails, tx)
+
 		if err != nil {
 			logrus.Printf("CreateUser:CreateUser:%v", err)
 			return err
 		}
+
 		userDetails.ID = userID
 		err = helper.CreateAddress(userID, &userDetails, tx)
+
 		if err != nil {
 			logrus.Printf("CreateUser:CreateAddress:%v", err)
 			return err
 		}
-		err = helper.CreateRoleUser(userID, tx)
+
+		err = helper.CreateRole(userID, models.UserRoleUser, tx)
 		return err
 	})
 	if txErr != nil {
@@ -479,47 +262,36 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("CreateUser:%v", err)
 		return
 	}
-
-	// err := json.NewEncoder(w).Encode(userOutboundData)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	logrus.Printf("encoder error:%v", err)
-	//	return
-	// }
 }
 
 func AddAddress(w http.ResponseWriter, r *http.Request) {
 	var userDetails models.Users
-	// err := json.NewDecoder(r.Body).Decode(&userDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
+
 	decoderErr := utilities.Decoder(r, &userDetails)
+
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("Decoder error:%v", decoderErr)
 		return
 	}
 
-	id, ok := r.Context().Value("ID").(int)
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
+		logrus.Printf("AddAddress:QueryParam for ID:%v", ok)
 		return
 	}
-	txErr := database.Tx(func(tx *sqlx.Tx) error {
-		err := helper.CreateAddress(id, &userDetails, tx)
-		return err
-	})
-	if txErr != nil {
+
+	err := helper.AddAddress(contextValues.ID, &userDetails)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("AddAddress:%v", txErr)
+		logrus.Printf("AddAddress: cannot add another address:%v", err)
 		return
 	}
-	message := "Added Another address"
-	err := utilities.Encoder(w, message)
+
+	message := "Added Another address successfully"
+	err = utilities.Encoder(w, message)
 	if err != nil {
 		logrus.Printf("AddAddress:%v", err)
 		return
@@ -529,20 +301,6 @@ func AddAddress(w http.ResponseWriter, r *http.Request) {
 func CreateRestaurants(w http.ResponseWriter, r *http.Request) {
 	var restaurantDetails models.Restaurants
 
-	id, ok := r.Context().Value("ID").(int)
-	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
-		return
-	}
-
-	// err := json.NewDecoder(r.Body).Decode(&restaurantDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
-
 	decoderErr := utilities.Decoder(r, &restaurantDetails)
 	if decoderErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -550,8 +308,16 @@ func CreateRestaurants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
+		return
+	}
+
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
-		restaurantID, err := helper.CreateRestaurants(&restaurantDetails, id, tx)
+		restaurantID, err := helper.CreateRestaurants(&restaurantDetails, contextValues.ID, tx)
 		if err != nil {
 			logrus.Printf("CreateRestaurants:CreateRestaurants:%v", err)
 			return err
@@ -576,47 +342,50 @@ func CreateRestaurants(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateDishes(w http.ResponseWriter, r *http.Request) {
-	var dishDetails models.Dishes
-
-	// err := json.NewDecoder(r.Body).Decode(&dishDetails)
-	// if err != nil {
-	//	w.WriteHeader(http.StatusBadRequest)
-	//	logrus.Printf("decoder error:%v", err)
-	//	return
-	// }
-	decoderErr := utilities.Decoder(r, &dishDetails)
-	if decoderErr != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		logrus.Printf("Decoder error:%v", decoderErr)
-		return
-	}
-	userID, ok := r.Context().Value("ID").(int)
-	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("AddDishes:QueryParam for ID:%v", ok)
-		return
-	}
-	restaurantID, err := strconv.Atoi(chi.URLParam(r, "restaurantID"))
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		logrus.Printf("parsing error :%v", err)
-		return
-	}
-	err = helper.CreateDishes(dishDetails, userID, restaurantID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("CreateDishes:%v", err)
-		return
-	}
-	message := "Created Dish Successfully"
-
-	err = utilities.Encoder(w, message)
-	if err != nil {
-		logrus.Printf("CreateDishes:%v", err)
-		return
-	}
-}
+// func CreateDishes(w http.ResponseWriter, r *http.Request) {
+//	// var route *models.App
+//
+//	var dishDetails models.DishDetails
+//
+//	decoderErr := utilities.Decoder(r, &dishDetails)
+//	if decoderErr != nil {
+//		w.WriteHeader(http.StatusBadRequest)
+//		logrus.Printf("Decoder error:%v", decoderErr)
+//		return
+//	}
+//
+//	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+//
+//	if !ok {
+//		w.WriteHeader(http.StatusInternalServerError)
+//		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
+//		return
+//	}
+//
+//	restaurantID, err := strconv.Atoi(chi.URLParam(r, "restaurantID"))
+//	if err != nil {
+//		w.WriteHeader(http.StatusBadRequest)
+//		logrus.Printf("parsing error :%v", err)
+//		return
+//	}
+//
+//	dishID, err := helper.CreateDishes(dishDetails, contextValues.ID, restaurantID)
+//	if err != nil {
+//		w.WriteHeader(http.StatusInternalServerError)
+//		logrus.Printf("CreateDishes:%v", err)
+//		return
+//	}
+//
+//	userOutboundData := make(map[string]int)
+//
+//	userOutboundData["Created restaurant with restaurant ID:"] = dishID
+//
+//	err = utilities.Encoder(w, userOutboundData)
+//	if err != nil {
+//		logrus.Printf("CreateRestaurants:%v", err)
+//		return
+//	}
+// }
 
 // func SetRole(w http.ResponseWriter, r *http.Request) {
 //	id, err := strconv.Atoi(chi.URLParam(r, "ID"))
@@ -674,18 +443,20 @@ func CreateDishes(w http.ResponseWriter, r *http.Request) {
 // }
 
 func GetSubAdmin(w http.ResponseWriter, r *http.Request) {
-	isSearched := false
-	searchedSubAdminName := r.URL.Query().Get("name")
-	if searchedSubAdminName != "" {
-		isSearched = true
-	}
-	subAdminDetails, GetSubAdminErr := helper.GetSubAdmin(isSearched, searchedSubAdminName)
-	if GetSubAdminErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("GetSubAdmin: error is:%v ", GetSubAdminErr)
+	filterCheck, err := filters(r)
+	if err != nil {
+		logrus.Printf("GetSubAdmin: filterCheck error:%v", err)
 		return
 	}
-	err := utilities.Encoder(w, subAdminDetails)
+
+	subAdminDetails, GetSubAdminErr := helper.GetSubAdmin(filterCheck)
+	if GetSubAdminErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		logrus.Printf("GetSubAdmin: not able to get subadmin :%v ", GetSubAdminErr)
+		return
+	}
+
+	err = utilities.Encoder(w, subAdminDetails)
 	if err != nil {
 		logrus.Printf("GetSubAdmin:%v", err)
 		return
@@ -697,40 +468,20 @@ func GetUsers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Printf("GetUsers:filterCheck:%v", err)
 	}
+
 	adminGetUserDetails, AdminGetUserErr := helper.GetUsers(filterCheck)
 	if AdminGetUserErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("AdminGetUser: error is:%v ", AdminGetUserErr)
+		logrus.Printf("AdminGetUser: not able to get users :%v ", AdminGetUserErr)
 		return
 	}
+
 	err = utilities.Encoder(w, adminGetUserDetails)
 	if err != nil {
 		logrus.Printf("GetUser:%v", err)
 		return
 	}
 }
-
-// func GetUser(w http.ResponseWriter, r *http.Request) {
-//	id, ok := r.Context().Value("ID").(int)
-//	if !ok {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("GetUser:QueryParam for ID:%v", ok)
-//		return
-//	}
-//
-//	userDetails, userDetailsErr := helper.GetUser(id)
-//	if userDetailsErr != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("GetUser: error is:%v ", userDetailsErr)
-//		return
-//	}
-//	err := json.NewEncoder(w).Encode(userDetails)
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("Encoding error:%v", err)
-//		return
-//	}
-// }
 
 func filters(r *http.Request) (models.FiltersCheck, error) {
 	filtersCheck := models.FiltersCheck{}
@@ -743,13 +494,13 @@ func filters(r *http.Request) (models.FiltersCheck, error) {
 	var limit int
 	var err error
 	var page int
-	strlimit := r.URL.Query().Get("limit")
-	if strlimit == "" {
+	strLimit := r.URL.Query().Get("limit")
+	if strLimit == "" {
 		limit = 10
 	} else {
-		limit, err = strconv.Atoi(strlimit)
+		limit, err = strconv.Atoi(strLimit)
 		if err != nil {
-			logrus.Printf("Limit: error is:%v", err)
+			logrus.Printf("Limit: cannot get limit:%v", err)
 			return filtersCheck, err
 		}
 	}
@@ -760,7 +511,7 @@ func filters(r *http.Request) (models.FiltersCheck, error) {
 	} else {
 		page, err = strconv.Atoi(strPage)
 		if err != nil {
-			logrus.Printf("Page: error is:%v", err)
+			logrus.Printf("Page: cannot get page:%v", err)
 			return filtersCheck, err
 		}
 	}
@@ -777,15 +528,17 @@ func GetAllRestaurants(w http.ResponseWriter, r *http.Request) {
 	filtersCheck, err := filters(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		logrus.Printf("GetAllRestaurants: %v", err)
+		logrus.Printf("GetAllRestaurants: filterCheck error: %v", err)
 		return
 	}
+
 	restaurantsDetails, restaurantsDetailsErr := helper.GetAllRestaurants(filtersCheck)
 	if restaurantsDetailsErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("GetRestaurants: error is:%v ", restaurantsDetailsErr)
+		logrus.Printf("GetRestaurants: not able to get all restaurant :%v ", restaurantsDetailsErr)
 		return
 	}
+
 	err = utilities.Encoder(w, restaurantsDetails)
 	if err != nil {
 		logrus.Printf("GetAllRestaurants:%v", err)
@@ -797,21 +550,25 @@ func GetRestaurants(w http.ResponseWriter, r *http.Request) {
 	filtersCheck, err := filters(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		logrus.Printf("GetRestaurants: %v", err)
+		logrus.Printf("GetRestaurants: filterCheck error: %v", err)
 		return
 	}
-	id, ok := r.Context().Value("ID").(int)
+
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("SubAdminGetRestaurants:QueryParam for ID:%v", ok)
+		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
 		return
 	}
-	restaurantsDetails, restaurantsDetailsErr := helper.GetRestaurants(id, filtersCheck)
+
+	restaurantsDetails, restaurantsDetailsErr := helper.GetRestaurants(contextValues.ID, filtersCheck)
 	if restaurantsDetailsErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("SubAdminGetRestaurants: error is:%v ", restaurantsDetailsErr)
+		logrus.Printf("SubAdminGetRestaurants: not able to get restaurant:%v ", restaurantsDetailsErr)
 		return
 	}
+
 	err = utilities.Encoder(w, restaurantsDetails)
 	if err != nil {
 		logrus.Printf("GetRestaurants:%v", err)
@@ -819,60 +576,36 @@ func GetRestaurants(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func UserGetRestaurants(w http.ResponseWriter, r *http.Request) {
-//
-//	userID, ok := r.Context().Value("ID").(int)
-//	if !ok {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("UserGetRestaurants:QueryParam for ID:%v", ok)
-//		return
-//	}
-//	userLocation, userLocationErr := helper.FetchUserLocation(userID)
-//	if userLocationErr != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("FetchUserLocation: error is:%v ", userLocationErr)
-//		return
-//	}
-//
-//	restaurantsDetails, restaurantsDetailsErr := helper.UserGetRestaurants(userLocation)
-//	if restaurantsDetailsErr != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("UserGetRestaurants: error is:%v ", restaurantsDetailsErr)
-//		return
-//	}
-//	err := json.NewEncoder(w).Encode(restaurantsDetails)
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("Encoding error:%v", err)
-//		return
-//	}
-// }
-
 func GetDishes(w http.ResponseWriter, r *http.Request) {
 	filtersCheck, err := filters(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		logrus.Printf("GetDishes: %v", err)
+		logrus.Printf("GetDishes: filterCheck error: %v", err)
 		return
 	}
-	userID, ok := r.Context().Value("ID").(int)
+
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("UserGetRestaurants:QueryParam for ID:%v", ok)
+		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
 		return
 	}
+
 	restaurantID, err := strconv.Atoi(chi.URLParam(r, "restaurantID"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("parsing error :%v", err)
 		return
 	}
-	dishDetails, dishDetailsErr := helper.GetDishes(restaurantID, userID, filtersCheck)
+
+	dishDetails, dishDetailsErr := helper.GetDishes(restaurantID, contextValues.ID, filtersCheck)
 	if dishDetailsErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("GetDishes: error is:%v ", dishDetailsErr)
+		logrus.Printf("GetDishes: not able to get dishes :%v ", dishDetailsErr)
 		return
 	}
+
 	err = utilities.Encoder(w, dishDetails)
 	if err != nil {
 		logrus.Printf("GetDishes:%v", err)
@@ -887,6 +620,7 @@ func GetDistance(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("parsing error :%v", err)
 		return
 	}
+
 	userLocation, userLocationErr := helper.FetchUserLocation(addressID)
 	if userLocationErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -894,12 +628,13 @@ func GetDistance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	restaurantID, err := strconv.Atoi(chi.URLParam(r, "ID"))
+	restaurantID, err := strconv.Atoi(chi.URLParam(r, "restaurantID"))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		logrus.Printf("parsing error :%v", err)
 		return
 	}
+
 	restaurantLocation, restaurantLocationErr := helper.FetchRestaurantLocation(restaurantID)
 	if restaurantLocationErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -910,48 +645,10 @@ func GetDistance(w http.ResponseWriter, r *http.Request) {
 	restaurantDistance := helper.GetDistance(userLocation.Lat, userLocation.Lon, restaurantLocation.Lat, restaurantLocation.Lon)
 	err = utilities.Encoder(w, restaurantDistance)
 	if err != nil {
-		logrus.Printf("GetDistance:%v", err)
+		logrus.Printf("GetDistance: not able to fetch distance between user and restaurant :%v", err)
 		return
 	}
 }
-
-// func SubAdminGetDishes(w http.ResponseWriter, r *http.Request) {
-//
-//	id, ok := r.Context().Value("ID").(int)
-//	if !ok {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("SubAdminGetDishes:QueryParam for ID:%v", ok)
-//		return
-//	}
-//	dishDetails, dishDetailsErr := helper.SubAdminGetDishes(id)
-//	if dishDetailsErr != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("SubAdminGetDishes: error is:%v ", dishDetailsErr)
-//		return
-//	}
-//	err := json.NewEncoder(w).Encode(dishDetails)
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("Encoding error:%v", err)
-//		return
-//	}
-// }
-
-// func UserGetDishes(w http.ResponseWriter, r *http.Request) {
-//
-//	dishDetails, dishDetailsErr := helper.UserGetDishes()
-//	if dishDetailsErr != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("UserGetDishes: error is:%v ", dishDetailsErr)
-//		return
-//	}
-//	err := json.NewEncoder(w).Encode(dishDetails)
-//	if err != nil {
-//		w.WriteHeader(http.StatusInternalServerError)
-//		log.Printf("Encoding error:%v", err)
-//		return
-//	}
-// }
 
 // func UpdateAdmin(w http.ResponseWriter, r *http.Request) {
 //	id, ok := r.Context().Value("ID").(int)
@@ -1002,10 +699,11 @@ func GetDistance(w http.ResponseWriter, r *http.Request) {
 // }
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value("ID").(int)
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("UpdateUser:QueryParam for ID:%v", ok)
+		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
 		return
 	}
 
@@ -1017,12 +715,13 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updateUserErr := helper.UpdateUser(id, &userDetails)
+	updateUserErr := helper.UpdateUser(contextValues.ID, &userDetails)
 	if updateUserErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logrus.Printf("UpdateUser: not able  to update user:%v", updateUserErr)
 		return
 	}
+
 	message := "updated User Successfully"
 	err := utilities.Encoder(w, message)
 	if err != nil {
@@ -1077,6 +776,7 @@ func UpdateDish(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("UpdateDishes: not able  to update dishes:%v", err)
 		return
 	}
+
 	message := "updated dish successfully"
 	err = utilities.Encoder(w, message)
 	if err != nil {
@@ -1116,18 +816,21 @@ func UpdateDish(w http.ResponseWriter, r *http.Request) {
 // }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	id, ok := r.Context().Value("ID").(int)
+	contextValues, ok := r.Context().Value(utilities.UserContextKey).(models.ContextValues)
+
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Printf("DeleteUser:QueryParam for ID:%v", ok)
+		logrus.Printf("CreateRestaurant:QueryParam for ID:%v", ok)
 		return
 	}
-	err := helper.DeleteUser(id)
+
+	err := helper.DeleteUser(contextValues.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logrus.Printf("DeleteUser:not able to delete user:%v", err)
 		return
 	}
+
 	message := "deleted user successfully"
 	err = utilities.Encoder(w, message)
 	if err != nil {
@@ -1158,12 +861,14 @@ func DeleteDish(w http.ResponseWriter, r *http.Request) {
 		logrus.Printf("parsing error :%v", err)
 		return
 	}
+
 	err = helper.DeleteDish(dishID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		logrus.Printf("DeleteDishes:not able to delete dishes:%v", err)
 		return
 	}
+
 	message := "deleted dish successfully"
 	err = utilities.Encoder(w, message)
 	if err != nil {

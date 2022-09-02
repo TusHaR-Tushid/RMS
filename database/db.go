@@ -3,6 +3,9 @@ package database
 import (
 	"fmt"
 
+	// for importing migrations
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/jmoiron/sqlx"

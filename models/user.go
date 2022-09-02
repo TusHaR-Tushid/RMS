@@ -85,6 +85,28 @@ type Dishes struct {
 	DishID       int    `json:"dishId" db:"dish_id"`
 	RestaurantID int    `json:"restaurantId" db:"restaurant_id"`
 	CreatedBy    int    `json:"createdBy" db:"created_by"`
+	URL          string `json:"url" db:"url"`
+}
+
+type DishDetails struct {
+	ID           int    `json:"id" db:"id"`
+	Name         string `json:"name" db:"name"`
+	Price        int    `json:"price" db:"price"`
+	DishID       int    `json:"dishId" db:"dish_id"`
+	RestaurantID int    `json:"restaurantId" db:"restaurant_id"`
+	CreatedBy    int    `json:"createdBy" db:"created_by"`
+	ImageID      int    `json:"imageId" db:"image_id"`
+}
+
+type BulkDishes struct {
+	ID      int `json:"id" db:"id"`
+	ImageID int `json:"imageId" db:"image_id"`
+}
+
+type ExampleBulkDishes struct {
+	Name    string `json:"name" db:"name"`
+	Price   int    `json:"price" db:"price"`
+	ImageID int    `json:"imageId" db:"image_id"`
 }
 
 type CountDishes struct {
@@ -105,6 +127,21 @@ type UsersLoginDetails struct {
 }
 
 type Claims struct {
-	ID int `json:"id"`
+	ID   int    `json:"id"`
+	Role string `json:"role"`
 	jwt.StandardClaims
+}
+
+var KeyID string
+
+type ContextValues struct {
+	ID   int    `json:"id"`
+	Role string `json:"role"`
+}
+
+type BulkImages struct {
+	URL        string `json:"url"`
+	ImageType  string `json:"imageType"`
+	ImageID    int    `json:"imageId"`
+	UploadedBy int    `json:"uploadedBy"`
 }

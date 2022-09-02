@@ -27,7 +27,7 @@ linters-settings:
   goimports:
     # put imports beginning with prefix after 3rd-party packages;
     # it's a comma-separated list of prefixes
-    local-prefixes: github.com/RemoteState/connect-up/*
+    local-prefixes:    github.com/RemoteState/RMS/*
   gomnd:
     settings:
       mnd:
@@ -85,4 +85,4 @@ run:
   skip-dirs:
     - pgdata/
   issues-exit-code: 1
-  timeout: 5m
+  timeout: 5

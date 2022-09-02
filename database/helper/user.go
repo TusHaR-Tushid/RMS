@@ -3,10 +3,12 @@ package helper
 import (
 	"RMS/database"
 	"RMS/models"
-	_ "context"
 	"log"
 	"math"
 	"strings"
+
+	// using context
+	_ "context"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
@@ -40,7 +42,7 @@ func FetchPasswordAndIDANDRole(userMail, userRole string) (models.UserCredential
 
 	err := database.RmsDB.Get(&userCredentials, SQL, userMail, userRole)
 	if err != nil {
-		logrus.Printf("FetchPassword:%v", err)
+		logrus.Printf("FetchPassword: Not able to fetch password, ID or role: %v", err)
 		return userCredentials, err
 	}
 	return userCredentials, nil
@@ -49,72 +51,95 @@ func FetchPasswordAndIDANDRole(userMail, userRole string) (models.UserCredential
 func CreateUser(userDetails *models.Users, tx *sqlx.Tx) (int, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userDetails.Password), bcrypt.DefaultCost)
 	if err != nil {
-		logrus.Printf("CreateUser: error is:%v", err)
+		logrus.Printf("CreateUser: Not able to hash password:%v", err)
 		return userDetails.ID, err
 	}
 
 	// language=SQL
-	SQL := `INSERT  INTO  users(name,email,password,phone_no,age,gender)
-           VALUES  ($1,$2,$3,$4,$5,$6)
+	SQL := `INSERT  INTO  users(name, email, password, phone_no, age, gender)
+           VALUES  ($1, $2, $3, $4, $5, $6)
            RETURNING id`
 
 	var id int
 	userDetails.Email = strings.ToLower(userDetails.Email)
 
 	err = tx.Get(&id, SQL, userDetails.Name, userDetails.Email, hashPassword, userDetails.PhoneNo, userDetails.Age, userDetails.Gender)
+
 	if err != nil {
-		logrus.Printf("CreateUser:error is :%v", err)
+		logrus.Printf("CreateUser: Not able to Create User :%v", err)
 		return id, err
 	}
+
 	return id, nil
 }
 
 func CreateAddress(id int, userDetails *models.Users, tx *sqlx.Tx) error {
-	SQL := `INSERT INTO user_address(user_id,address,lat, lon)
-          VALUES ($1,$2,$3,$4)`
+	SQL := `INSERT INTO user_address(user_id, address, lat, lon)
+          VALUES ($1, $2, $3, $4)`
 	_, err := tx.Exec(SQL, id, userDetails.Address, userDetails.Lat, userDetails.Lon)
+
 	if err != nil {
 		logrus.Printf("CreateAddress: unable to create address:%v", err)
 		return err
 	}
+
 	return nil
 }
 
-func CreateRoleUser(id int, tx *sqlx.Tx) error {
+func AddAddress(userID int, userDetails *models.Users) error {
+	SQL := `INSERT INTO user_address(user_id, address, lat, lon)
+          VALUES ($1, $2, $3, $4)`
+	_, err := database.RmsDB.Exec(SQL, userID, userDetails.Address, userDetails.Lat, userDetails.Lon)
+
+	if err != nil {
+		logrus.Printf("CreateAddress: unable to create address:%v", err)
+		return err
+	}
+
+	return nil
+}
+
+func CreateRole(id int, role models.UserProfile, tx *sqlx.Tx) error {
 	SQL := `INSERT INTO roles(user_id, role)
-           VALUES ($1,$2)`
+           VALUES ($1, $2)`
 
-	_, err := tx.Exec(SQL, id, models.UserRoleUser)
+	_, err := tx.Exec(SQL, id, role)
+
 	if err != nil {
-		logrus.Printf("CreateRoleUser:%v", err)
+		logrus.Printf("CreateRoleUser: Not able to set user role: %v", err)
 		return err
 	}
+
 	return nil
 }
 
-func CreateRoleAdmin(id int, tx *sqlx.Tx) error {
-	SQL := `INSERT INTO roles(user_id,role)
-           VALUES ($1,$2)`
-
-	_, err := tx.Exec(SQL, id, models.UserRoleAdmin)
-	if err != nil {
-		logrus.Printf("CreateRoleAdmin:%v", err)
-		return err
-	}
-	return nil
-}
-
-func CreateRoleSubAdmin(id int, tx *sqlx.Tx) error {
-	SQL := `INSERT INTO roles(user_id,role)
-           VALUES ($1,$2)`
-
-	_, err := tx.Exec(SQL, id, models.UserRoleSubAdmin)
-	if err != nil {
-		logrus.Printf("CreateRoleSubAdmin:%v", err)
-		return err
-	}
-	return nil
-}
+// func CreateRoleAdmin(id int, tx *sqlx.Tx) error {
+//	SQL := `INSERT INTO roles(user_id, role)
+//           VALUES ($1, $2)`
+//
+//	_, err := tx.Exec(SQL, id, models.UserRoleAdmin)
+//
+//	if err != nil {
+//		logrus.Printf("CreateRoleAdmin:%v", err)
+//		return err
+//	}
+//
+//	return nil
+// }
+//
+// func CreateRoleSubAdmin(id int, tx *sqlx.Tx) error {
+//	SQL := `INSERT INTO roles(user_id, role)
+//           VALUES ($1, $2)`
+//
+//	_, err := tx.Exec(SQL, id, models.UserRoleSubAdmin)
+//
+//	if err != nil {
+//		logrus.Printf("CreateRoleSubAdmin: Not able to set SubAdmin role of user: %v", err)
+//		return err
+//	}
+//
+//	return nil
+// }
 
 // func CreateAdmin(userDetails models.Users) (int, error) {
 //	hash, err := bcrypt.GenerateFromPassword([]byte(userDetails.Password), bcrypt.DefaultCost)
@@ -204,8 +229,9 @@ func CreateRestaurants(restaurantDetails *models.Restaurants, id int, tx *sqlx.T
 
 	var restaurantID int
 	err := tx.Get(&restaurantID, SQL, restaurantDetails.Name, id)
+
 	if err != nil {
-		logrus.Printf("CreateRestaurants: error is :%v", err)
+		logrus.Printf("CreateRestaurants: Cannot create restaurant :%v", err)
 		return restaurantID, err
 	}
 
@@ -214,27 +240,136 @@ func CreateRestaurants(restaurantDetails *models.Restaurants, id int, tx *sqlx.T
 
 func CreateRestaurantAddress(restaurantDetails *models.Restaurants, restaurantID int, tx *sqlx.Tx) error {
 	// language=SQL
-	SQL := `INSERT INTO restaurant_address(restaurant_id,address,lat, lon)
-          VALUES ($1,$2,$3,$4)`
+	SQL := `INSERT INTO restaurant_address(restaurant_id, address, lat, lon)
+          VALUES ($1, $2, $3, $4)`
 	_, err := tx.Exec(SQL, restaurantID, restaurantDetails.Address, restaurantDetails.Lat, restaurantDetails.Lon)
+
 	if err != nil {
 		logrus.Printf("CreateRestaurantAddress: unable to create address:%v", err)
+		return err
+	}
+
+	return nil
+}
+
+// func CreateDishes(dishDetails models.DishDetails, createdBy, restaurantID int) (int, error) {
+//	// language=SQL
+//	SQL := `INSERT INTO dishes(name, price, created_by, restaurant_id)
+//            VALUES ($1, $2, $3, $4)
+//            ON  CONFLICT (name, restaurant_id)
+//            WHERE archived_at IS NULL
+//            DO NOTHING
+//            RETURNING id`
+//
+//	var dishID int
+//
+//	err := database.RmsDB.Get(&dishID, SQL, dishDetails.Name, dishDetails.Price, createdBy, restaurantID)
+//	if err != nil {
+//		logrus.Printf("CreateDishes: unable to create dish :%v", err)
+//		return dishID, err
+//	}
+//
+//	return dishID, nil
+// }
+
+func CreateDishes(dishDetails models.DishDetails, createdBy, restaurantID int, tx *sqlx.Tx) (int, error) {
+	// language=SQL
+	SQL := `INSERT INTO dishes(name, price, created_by, restaurant_id)
+            VALUES ($1, $2, $3, $4)
+            ON  CONFLICT (name, restaurant_id)
+            WHERE archived_at IS NULL 
+            DO NOTHING
+            RETURNING id`
+
+	var dishID int
+
+	err := tx.Get(&dishID, SQL, dishDetails.Name, dishDetails.Price, createdBy, restaurantID)
+	if err != nil {
+		logrus.Printf("CreateDishes: unable to create dish :%v", err)
+		return dishID, err
+	}
+
+	return dishID, nil
+}
+
+func InsertDishImage(imageID, dishID int, tx *sqlx.Tx) error {
+	if imageID == 0 {
+		return nil
+	}
+	SQL := `INSERT INTO dish_per_image(dish_id, image_id)
+            VALUES ($1, $2)`
+
+	_, err := tx.Exec(SQL, dishID, imageID)
+	if err != nil {
+		logrus.Printf("InsertDishImage: unable to insert image for ths dish:%v", err)
 		return err
 	}
 	return nil
 }
 
-func CreateDishes(dishDetails models.Dishes, createdBy, restaurantID int) error {
-	// language=SQL
-	SQL := `INSERT INTO dishes(name, price, created_by, restaurant_id)
-            VALUES ($1, $2, $3,$4)`
+// func BulkDishes(bulkDishes []models.BulkDishes) error {
+//	valueStrings := make([]string, 0, len(bulkDishes))
+//	valueArgs := make([]interface{}, 0, len(bulkDishes)*3)
+//	i := 0
+//	for _, post := range bulkDishes {
+//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+//		valueArgs = append(valueArgs, post.Name)
+//		valueArgs = append(valueArgs, post.Price)
+//		valueArgs = append(valueArgs, post.CreatedBy)
+//		valueArgs = append(valueArgs, post.RestaurantID)
+//		valueArgs = append(valueArgs, post.ImageID)
+//		i++
+//	}
+//
+//	stmt := fmt.Sprintf("INSERT INTO dishes (name, price, created_by, restaurant_id, image_id) VALUES %s",
+//		strings.Join(valueStrings, ","))
+//
+//	// stmt := ("INSERT INTO images(url, image_type, image_id)
+//	//        VALUES  %s", strings.Join(valueStrings, ","))
+//
+//	_, err := database.RmsDB.Exec(stmt, valueArgs...)
+//	if err != nil {
+//		logrus.Printf("BulkDishes: error is: %v", err)
+//		return err
+//	}
+//	return nil
+// }
 
-	_, err := database.RmsDB.Exec(SQL, dishDetails.Name, dishDetails.Price, createdBy, restaurantID)
+// func BulkInsert(bulkImages []*models.BulkImages) error {
+//	valueStrings := make([]string, 0, len(bulkImages))
+//	valueArgs := make([]interface{}, 0, len(bulkImages)*3)
+//	for _, post := range bulkImages {
+//		valueStrings = append(valueStrings, "($1, $2, $3)")
+//		valueArgs = append(valueArgs, post.URL)
+//		valueArgs = append(valueArgs, post.ImageType)
+//		valueArgs = append(valueArgs, post.ImageID)
+//	}
+//
+//	stmt := fmt.Sprintf("INSERT INTO images (url, image_type, image_id) VALUES %s",
+//		strings.Join(valueStrings, ","))
+//
+//	// stmt := ("INSERT INTO images(url, image_type, image_id)
+//	//        VALUES  %s", strings.Join(valueStrings, ","))
+//
+//	_, err := database.RmsDB.Exec(stmt, valueArgs...)
+//	if err != nil {
+//		logrus.Printf("BulkInsert: error is: %v", err)
+//		return err
+//	}
+//	return nil
+// }
+
+func UploadImage(imageURL string, userID int, imageType string) (int, error) {
+	// language=SQL
+	var imageID int
+	SQL := `INSERT INTO images(url, image_type, uploaded_by)
+          VALUES  ($1, $2, $3)`
+	err := database.RmsDB.Get(&imageID, SQL, imageURL, imageType, userID)
 	if err != nil {
-		logrus.Printf("CreateDishes: error is :%v", err)
-		return err
+		logrus.Printf("StoreImage: not able to store image in db:%v", err)
+		return imageID, err
 	}
-	return nil
+	return imageID, nil
 }
 
 func GetAdminDetails(id int) ([]models.UserDetails, error) {
@@ -352,7 +487,7 @@ func SetRole(id int, role string) error {
 //	return subAdminDetails, nil
 // }
 
-func GetSubAdmin(isSearched bool, searchedSubAdminName string) (models.TotalUser, error) {
+func GetSubAdmin(filterCheck models.FiltersCheck) (models.TotalUser, error) {
 	// language=SQL
 	var totalUser models.TotalUser
 	SQL := `WITH  cte_sub_admin AS(
@@ -378,6 +513,7 @@ func GetSubAdmin(isSearched bool, searchedSubAdminName string) (models.TotalUser
             AND   user_address.archived_at IS NULL
             AND   role=$1
             AND   ($2 or name ilike '%' || $3 || '%')
+            LIMIT $4 OFFSET $5
             )
             SELECT 
                      total_count,
@@ -398,15 +534,18 @@ func GetSubAdmin(isSearched bool, searchedSubAdminName string) (models.TotalUser
 
 	subAdminDetails := make([]models.UserDetails, 0)
 
-	err := database.RmsDB.Select(&subAdminDetails, SQL, models.UserRoleSubAdmin, !isSearched, searchedSubAdminName)
+	err := database.RmsDB.Select(&subAdminDetails, SQL, models.UserRoleSubAdmin, !filterCheck.IsSearched, filterCheck.SearchedName, filterCheck.Limit, filterCheck.Limit*filterCheck.Page)
+
 	if err != nil {
 		logrus.Printf("GetSubAdmin: unable to fetch subadmin details:%v", err)
 		return totalUser, err
 	}
+
 	if len(subAdminDetails) == 0 {
 		logrus.Printf("GetAllRestaurants:%v", err)
 		return totalUser, err
 	}
+
 	totalUser.UserDetails = subAdminDetails
 	totalUser.TotalCount = subAdminDetails[0].TotalCount
 	return totalUser, nil
@@ -426,8 +565,8 @@ func GetUsers(filterCheck models.FiltersCheck) (models.TotalUser, error) {
                      password,
                      age,
                      gender,
-                     created_at as created_at,
-                     updated_at as updated_at,
+                     users.created_at as created_at,
+                     users.updated_at as updated_at,
                      role,
                      address,
                      lat,
@@ -461,14 +600,17 @@ func GetUsers(filterCheck models.FiltersCheck) (models.TotalUser, error) {
 	userDetails := make([]models.UserDetails, 0)
 
 	err := database.RmsDB.Select(&userDetails, SQL, models.UserRoleUser, !filterCheck.IsSearched, filterCheck.SearchedName, filterCheck.Limit, filterCheck.Limit*filterCheck.Page)
+
 	if err != nil {
-		logrus.Printf("GetUsers: unable to fetch users:%v", err)
+		logrus.Printf("GetUsers: unable to fetch user details:%v", err)
 		return totalUser, err
 	}
+
 	if len(userDetails) == 0 {
 		logrus.Printf("GetUsers:%v", err)
 		return totalUser, err
 	}
+
 	totalUser.UserDetails = userDetails
 	totalUser.TotalCount = userDetails[0].TotalCount
 	return totalUser, nil
@@ -545,8 +687,9 @@ func GetAllRestaurants(filtersCheck models.FiltersCheck) (models.TotalRestaurant
 	restaurantDetails := make([]models.Restaurants, 0)
 
 	err := database.RmsDB.Select(&restaurantDetails, SQL, !filtersCheck.IsSearched, filtersCheck.SearchedName, filtersCheck.Limit, filtersCheck.Limit*filtersCheck.Page)
+
 	if err != nil {
-		logrus.Printf("GetRestaurants: unable to fetch restaurants details:%v", err)
+		logrus.Printf("GetRestaurants: unable to fetch all restaurants :%v", err)
 		return totalRestaurant, err
 	}
 
@@ -596,14 +739,17 @@ func GetRestaurants(subAdminID int, filtersCheck models.FiltersCheck) (models.To
 	restaurantDetails := make([]models.Restaurants, 0)
 
 	err := database.RmsDB.Select(&restaurantDetails, SQL, subAdminID, !filtersCheck.IsSearched, filtersCheck.SearchedName, filtersCheck.Limit, filtersCheck.Limit*filtersCheck.Page)
+
 	if err != nil {
 		logrus.Printf("GetRestaurants: unable to fetch restaurants details:%v", err)
 		return totalRestaurant, err
 	}
+
 	if len(restaurantDetails) == 0 {
 		logrus.Printf("GetAllRestaurants:%v", err)
 		return totalRestaurant, err
 	}
+
 	totalRestaurant.Restaurants = restaurantDetails
 	totalRestaurant.TotalCount = restaurantDetails[0].TotalCount
 	return totalRestaurant, nil
@@ -619,10 +765,12 @@ func FetchUserLocation(userID int) (models.UserLocation, error) {
 	var userLocation models.UserLocation
 
 	err := database.RmsDB.Get(&userLocation, SQL, userID)
+
 	if err != nil {
 		logrus.Printf("FetchUserLocation: unable to fetch user location:%v", err)
 		return userLocation, err
 	}
+
 	return userLocation, nil
 }
 
@@ -637,10 +785,12 @@ func FetchRestaurantLocation(restaurantID int) (models.UserLocation, error) {
 	var restaurantLocation models.UserLocation
 
 	err := database.RmsDB.Get(&restaurantLocation, SQL, restaurantID)
+
 	if err != nil {
 		logrus.Printf("FetchRestaurantLocation: unable to fetch restaurant location:%v", err)
 		return restaurantLocation, err
 	}
+
 	return restaurantLocation, nil
 }
 
@@ -674,36 +824,6 @@ func GetDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	return (2 * r * math.Asin(math.Sqrt(h))) / 1000
 }
 
-// func UserGetRestaurants(userLocation models.UserLocation) ([]models.Restaurants, error) {
-//	language=SQL
-//	SQL := `
-//            SELECT
-//                     id,
-//                     name,
-//                     created_at,
-//                     updated_at,
-//                     address,
-//                     lat,
-//                     lon,
-//                     archived_at
-//            FROM  restaurants
-//            JOIN restaurant_address ON  restaurants.id=restaurant_id
-//            WHERE restaurants.archived_at IS NULL
-//            AND   restaurant_address.archived_at IS NULL
-//            AND   SQRT(POW(69.1 * (lat::float -  $1::float), 2) +
-//                  POW(69.1 * ($2::float - lon::float) * COS(lat::float / 57.3), 2))  < 25
-//            ORDER BY id LIMIT 2`
-//
-//	restaurantDetails := make([]models.Restaurants, 0)
-//
-//	err := database.RmsDb.Select(&restaurantDetails, SQL, userLocation.Lat, userLocation.Lon, userLocation.Lat)
-//	if err != nil {
-//		logrus.Printf("UserGetRestaurants: unable to fetch restaurants details:%v", err)
-//		return nil, err
-//	}
-//	return restaurantDetails, nil
-// }
-
 func GetDishes(restaurantID, userID int, filtersCheck models.FiltersCheck) (models.CountDishes, error) {
 	// language=SQL
 	var totalDishes models.CountDishes
@@ -715,13 +835,15 @@ func GetDishes(restaurantID, userID int, filtersCheck models.FiltersCheck) (mode
                                           name,
                                           price,
                                           created_by,
-                                          restaurant_id
+                                          restaurant_id,
+                                          url
                                   FROM
-                                          dishes
-                                  WHERE              archived_at IS NULL 
-                                  AND        restaurant_id=$1
-                                  AND        created_by=$2
-                                  AND        ($3 or name ilike '%'||$4||'%')
+                                          dishes LEFT JOIN dish_per_image ON dishes.id = dish_per_image.dish_id
+                                                 LEFT JOIN images         ON dish_per_image.image_id = images.id
+                                  WHERE              dishes.archived_at IS NULL 
+                                  AND        restaurant_id = $1
+                                  AND        created_by = $2
+                                  AND        ($3 or name ilike '%'|| $4 ||'%')
                                   ORDER BY    name
                                   LIMIT      $5
                                   OFFSET     $6 
@@ -733,22 +855,25 @@ func GetDishes(restaurantID, userID int, filtersCheck models.FiltersCheck) (mode
                        name,
                        price,
                        created_by,
-                       restaurant_id
+                       restaurant_id,
+                       COALESCE (url, '') as url
             FROM
                        cte_count`
 
 	dishDetails := make([]models.Dishes, 0)
 
 	err := database.RmsDB.Select(&dishDetails, SQL, restaurantID, userID, !filtersCheck.IsSearched, filtersCheck.SearchedName, filtersCheck.Limit, filtersCheck.Limit*filtersCheck.Page)
+
 	if err != nil {
 		logrus.Printf("GetDishes: unable to fetch dish details: %v", err)
 		return totalDishes, err
 	}
-	if len(dishDetails) == 0 {
-		logrus.Printf("GetDishes:%v", err)
-		return totalDishes, err
-	}
+
 	totalDishes.Dishes = dishDetails
+	if len(dishDetails) == 0 {
+		return totalDishes, nil
+	}
+
 	totalDishes.TotalCount = dishDetails[0].TotalCount
 	return totalDishes, nil
 }
@@ -885,10 +1010,12 @@ func UpdateUser(id int, userDetails *models.UserDetails) error {
                   users.id=$7`
 
 	_, err := database.RmsDB.Exec(SQL, userDetails.Name, userDetails.Email, userDetails.PhoneNo, userDetails.PhoneNo, userDetails.Password, userDetails.Age, userDetails.Gender, id)
+
 	if err != nil {
-		logrus.Printf("UpdateUser: cannot update user:%v", err)
+		logrus.Printf("UpdateUser: cannot update user details:%v", err)
 		return err
 	}
+
 	SQL = `UPDATE user_address 
            SET
                   address=$1,
@@ -898,10 +1025,12 @@ func UpdateUser(id int, userDetails *models.UserDetails) error {
                   user_id=$4`
 
 	_, err = database.RmsDB.Exec(SQL, userDetails.Address, userDetails.Lat, userDetails.Lon, id)
+
 	if err != nil {
-		logrus.Printf("UpdateUser: cannot update user:%v", err)
+		logrus.Printf("UpdateUser: cannot update user address:%v", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -956,10 +1085,12 @@ func UpdateDish(id int, dishesDetails models.Dishes) error {
             WHERE   dishes.id=$3`
 
 	_, err := database.RmsDB.Exec(SQL, dishesDetails.Name, dishesDetails.Price, id)
+
 	if err != nil {
-		logrus.Printf("UpdateDishes: cannot update dishes:%v", err)
+		logrus.Printf("UpdateDishes: cannot update dish:%v", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -998,10 +1129,12 @@ func DeleteUser(id int) error {
             WHERE id=$1`
 
 	_, err := database.RmsDB.Exec(SQL, id)
+
 	if err != nil {
 		logrus.Printf("DeleteUser: cannot delete user:%v", err)
 		return err
 	}
+
 	return nil
 }
 
@@ -1024,9 +1157,11 @@ func DeleteDish(id int) error {
             SET    archived_at=now()
             WHERE dishes.id=$1`
 	_, err := database.RmsDB.Exec(SQL, id)
+
 	if err != nil {
 		logrus.Printf("DeleteDishes: cannot delete dishes:%v", err)
 		return err
 	}
+
 	return nil
 }

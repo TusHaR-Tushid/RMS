@@ -10,7 +10,7 @@ import (
 type Key string
 
 const (
-	UserContextKey Key = "ID"
+	UserContextKey Key = "values"
 )
 
 func Decoder(r *http.Request, inter interface{}) error {
